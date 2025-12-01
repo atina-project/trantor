@@ -6,9 +6,10 @@ option(BUILD_C-ARES "Build C-ARES" ON)
 option(BUILD_TESTING "Build tests" OFF)
 option(BUILD_SHARED_LIBS "Build trantor as a shared lib" OFF)
 option(TRANTOR_USE_TLS
-       "TLS provider for trantor. Valid options are 'openssl', 'botan' or '' (let the build scripr decide)" ""
+       "TLS provider for trantor. Valid options are 'openssl', 'botan' or '' (let the build script decide)" ""
 )
 option(USE_SPDLOG "Allow using the spdlog logging library" OFF)
+option(TRANTOR_NO_INSTALL "Do not install trantor" OFF)
 
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_modules/)
 
@@ -356,49 +357,53 @@ source_group(
 
 source_group("Private Headers" FILES ${private_headers})
 
-install(
-  TARGETS trantor
-          # IMPORTANT: Add the trantor library to the "export-set"
-  EXPORT TrantorTargets
-  RUNTIME DESTINATION "${INSTALL_BIN_DIR}" COMPONENT bin
-  ARCHIVE DESTINATION "${INSTALL_LIB_DIR}" COMPONENT lib
-  LIBRARY DESTINATION "${INSTALL_LIB_DIR}" COMPONENT lib
-)
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/exports/trantor/exports.h DESTINATION ${INSTALL_INCLUDE_DIR}/trantor)
-install(FILES ${public_net_headers} DESTINATION ${INSTALL_INCLUDE_DIR}/trantor/net)
-install(FILES ${public_utils_headers} DESTINATION ${INSTALL_INCLUDE_DIR}/trantor/utils)
+if(NOT ${TRANTOR_NO_INSTALL})
 
-include(CMakePackageConfigHelpers)
-# ... for the install tree
-configure_package_config_file(
-  cmake/templates/TrantorConfig.cmake.in ${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/TrantorConfig.cmake
-  INSTALL_DESTINATION ${INSTALL_TRANTOR_CMAKE_DIR}
-)
+  install(
+    TARGETS trantor
+            # IMPORTANT: Add the trantor library to the "export-set"
+    EXPORT TrantorTargets
+    RUNTIME DESTINATION "${INSTALL_BIN_DIR}" COMPONENT bin
+    ARCHIVE DESTINATION "${INSTALL_LIB_DIR}" COMPONENT lib
+    LIBRARY DESTINATION "${INSTALL_LIB_DIR}" COMPONENT lib
+  )
+  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/exports/trantor/exports.h DESTINATION ${INSTALL_INCLUDE_DIR}/trantor)
+  install(FILES ${public_net_headers} DESTINATION ${INSTALL_INCLUDE_DIR}/trantor/net)
+  install(FILES ${public_utils_headers} DESTINATION ${INSTALL_INCLUDE_DIR}/trantor/utils)
 
-# version
-write_basic_package_version_file(
-  ${CMAKE_CURRENT_BINARY_DIR}/TrantorConfigVersion.cmake
-  VERSION ${TRANTOR_VERSION}
-  COMPATIBILITY SameMajorVersion
-)
+  include(CMakePackageConfigHelpers)
+  # ... for the install tree
+  configure_package_config_file(
+    cmake/templates/TrantorConfig.cmake.in ${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/TrantorConfig.cmake
+    INSTALL_DESTINATION ${INSTALL_TRANTOR_CMAKE_DIR}
+  )
 
-# Install the TrantorConfig.cmake and TrantorConfigVersion.cmake
-install(
-  FILES "${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/TrantorConfig.cmake"
-        "${CMAKE_CURRENT_BINARY_DIR}/TrantorConfigVersion.cmake"
-        "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/Findc-ares.cmake"
-        "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/FindBotan.cmake"
-  DESTINATION "${INSTALL_TRANTOR_CMAKE_DIR}"
-  COMPONENT dev
-)
+  # version
+  write_basic_package_version_file(
+    ${CMAKE_CURRENT_BINARY_DIR}/TrantorConfigVersion.cmake
+    VERSION ${TRANTOR_VERSION}
+    COMPATIBILITY SameMajorVersion
+  )
 
-# Install the export set for use with the install-tree
-install(
-  EXPORT TrantorTargets
-  DESTINATION "${INSTALL_TRANTOR_CMAKE_DIR}"
-  NAMESPACE Trantor::
-  COMPONENT dev
-)
+  # Install the TrantorConfig.cmake and TrantorConfigVersion.cmake
+  install(
+    FILES "${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/TrantorConfig.cmake"
+          "${CMAKE_CURRENT_BINARY_DIR}/TrantorConfigVersion.cmake"
+          "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/Findc-ares.cmake"
+          "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/FindBotan.cmake"
+    DESTINATION "${INSTALL_TRANTOR_CMAKE_DIR}"
+    COMPONENT dev
+  )
+
+  # Install the export set for use with the install-tree
+  install(
+    EXPORT TrantorTargets
+    DESTINATION "${INSTALL_TRANTOR_CMAKE_DIR}"
+    NAMESPACE Trantor::
+    COMPONENT dev
+  )
+
+endif()
 
 # Doxygen documentation
 find_package(Doxygen OPTIONAL_COMPONENTS dot dia)
@@ -427,10 +432,12 @@ if(DOXYGEN_FOUND)
   if(BUILD_DOC)
     add_dependencies(${PROJECT_NAME} doc_${PROJECT_NAME})
     # Don't install twice, so limit to Debug (assume developer)
-    install(
-      DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/docs/${PROJECT_NAME}
-      TYPE DOC
-      CONFIGURATIONS Debug
-    )
+    if(NOT ${TRANTOR_NO_INSTALL})
+      install(
+        DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/docs/${PROJECT_NAME}
+        TYPE DOC
+        CONFIGURATIONS Debug
+      )
+    endif()
   endif(BUILD_DOC)
 endif(DOXYGEN_FOUND)
